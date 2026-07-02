@@ -24,20 +24,14 @@ async function subscribeToPush() {
   if (permission !== 'granted') return;
 
   const registration = await navigator.serviceWorker.ready;
-  const vapidKey = await getVapidPublicKey();
   const existing = await registration.pushManager.getSubscription();
-
   if (existing) {
-    // Recreate subscription so it always matches current VAPID key after deployments.
-    try {
-      await existing.unsubscribe();
-    } catch {
-      // If unsubscribe fails, keep the old subscription as fallback.
-      await api.post('/push/subscribe', existing.toJSON());
-      return;
-    }
+    // Already subscribed — ensure backend has it
+    await api.post('/push/subscribe', existing.toJSON());
+    return;
   }
 
+  const vapidKey = await getVapidPublicKey();
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(vapidKey),
@@ -52,8 +46,47 @@ async function subscribeToPush() {
 export function usePushNotifications(isAuthenticated) {
   useEffect(() => {
     if (!isAuthenticated) return;
-    subscribeToPush().catch((err) => {
-      console.warn('Push subscription error:', err.message);
-    });
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      return;
+    }
+
+    // If already granted, subscribe immediately.
+    if (Notification.permission === 'granted') {
+      subscribeToPush().catch((err) => {
+        console.warn('Push subscription error:', err.message);
+      });
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      console.warn('Push permission was denied on this device/browser.');
+      return;
+    }
+
+    // Mobile browsers commonly require a user gesture before showing permission prompt.
+    let requested = false;
+    const requestFromGesture = () => {
+      if (requested) return;
+      requested = true;
+
+      window.removeEventListener('click', requestFromGesture, true);
+      window.removeEventListener('touchend', requestFromGesture, true);
+      window.removeEventListener('keydown', requestFromGesture, true);
+
+      subscribeToPush().catch((err) => {
+        console.warn('Push subscription error:', err.message);
+      });
+    };
+
+    window.addEventListener('click', requestFromGesture, true);
+    window.addEventListener('touchend', requestFromGesture, true);
+    window.addEventListener('keydown', requestFromGesture, true);
+
+    return () => {
+      window.removeEventListener('click', requestFromGesture, true);
+      window.removeEventListener('touchend', requestFromGesture, true);
+      window.removeEventListener('keydown', requestFromGesture, true);
+    };
   }, [isAuthenticated]);
 }
