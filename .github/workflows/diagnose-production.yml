@@ -7,6 +7,7 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: production
 
     env:
       PM2_APP_NAME: ${{ vars.PM2_APP_NAME }}
@@ -47,6 +48,14 @@ jobs:
             echo "===== BACKEND PORT / HEALTH ====="
             ss -ltnp | grep -E ":80|:443|:${PORT}" || true
             curl -i -m 10 "http://127.0.0.1:${PORT}/api/health" || true
+
+            echo "===== PUSH SUBSCRIPTIONS ====="
+            if [ -n "$BACKEND_DIR" ] && [ -f "$BACKEND_DIR/data/push-subscriptions.json" ]; then
+              ls -lh "$BACKEND_DIR/data/push-subscriptions.json" || true
+              node -e "const fs=require('fs');const p=process.argv[1];const d=JSON.parse(fs.readFileSync(p,'utf8')||'{}');console.log('subscriptions_count=' + Object.keys(d).length);" "$BACKEND_DIR/data/push-subscriptions.json" || true
+            else
+              echo "No push-subscriptions.json file found"
+            fi
 
             echo "===== BACKEND ENV (SAFE KEYS ONLY) ====="
             if [ -n "$BACKEND_DIR" ]; then

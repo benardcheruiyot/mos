@@ -154,8 +154,17 @@ function getNextHourlyMessage() {
 }
 
 async function broadcastHourlyReminder() {
-  if (!pushEnabled) return;
-  if (subscriptions.size === 0) return;
+  if (!pushEnabled) {
+    console.warn('[Push Scheduler] Skipped hourly reminder: push is disabled.');
+    return;
+  }
+
+  if (subscriptions.size === 0) {
+    console.warn('[Push Scheduler] Skipped hourly reminder: no active subscriptions.');
+    return;
+  }
+
+  console.log(`[Push Scheduler] Sending hourly reminder to ${subscriptions.size} subscription(s).`);
 
   const { title, body } = getNextHourlyMessage();
   const payload = {
@@ -174,7 +183,10 @@ async function broadcastHourlyReminder() {
   if (stale.length > 0) {
     stale.forEach((id) => subscriptions.delete(id));
     persistSubscriptions();
+    console.warn(`[Push Scheduler] Removed ${stale.length} stale subscription(s).`);
   }
+
+  console.log('[Push Scheduler] Hourly reminder cycle completed.');
 }
 
 module.exports = { configure, isEnabled, saveSubscription, removeSubscription, sendToUser, broadcastHourlyReminder };
