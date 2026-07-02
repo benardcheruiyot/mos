@@ -45,17 +45,17 @@ async function subscribeToPush() {
  */
 export function usePushNotifications(isAuthenticated) {
   useEffect(() => {
-    if (!isAuthenticated) return;
-
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
       return;
     }
 
-    // If already granted, subscribe immediately.
+    // If already granted, subscribe immediately once the user is authenticated.
     if (Notification.permission === 'granted') {
-      subscribeToPush().catch((err) => {
-        console.warn('Push subscription error:', err.message);
-      });
+      if (isAuthenticated) {
+        subscribeToPush().catch((err) => {
+          console.warn('Push subscription error:', err.message);
+        });
+      }
       return;
     }
 
@@ -66,7 +66,7 @@ export function usePushNotifications(isAuthenticated) {
 
     // Mobile browsers commonly require a user gesture before showing permission prompt.
     let requested = false;
-    const requestFromGesture = () => {
+    const requestFromGesture = async () => {
       if (requested) return;
       requested = true;
 
@@ -74,9 +74,14 @@ export function usePushNotifications(isAuthenticated) {
       window.removeEventListener('touchend', requestFromGesture, true);
       window.removeEventListener('keydown', requestFromGesture, true);
 
-      subscribeToPush().catch((err) => {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted' && isAuthenticated) {
+          await subscribeToPush();
+        }
+      } catch (err) {
         console.warn('Push subscription error:', err.message);
-      });
+      }
     };
 
     window.addEventListener('click', requestFromGesture, true);
