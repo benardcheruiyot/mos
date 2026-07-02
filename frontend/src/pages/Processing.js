@@ -24,7 +24,7 @@ const Processing = () => {
   const [showResult, setShowResult] = useState(false);
 
   useEffect(() => {
-    document.title = 'Processing Eligibility | Loan App Clone';
+    document.title = 'Processing Eligibility | Tala Mkopaji';
   }, []);
 
   useEffect(() => {

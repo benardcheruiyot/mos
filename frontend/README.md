@@ -1,4 +1,4 @@
-# Frontend - Loan App Clone
+# Frontend - Tala Mkopaji
 
 React-based frontend application for loan management and application.
 

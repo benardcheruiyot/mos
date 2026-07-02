@@ -194,7 +194,7 @@ const Loan = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    document.title = 'Loan Options | Loan App Clone';
+    document.title = 'Loan Options | Tala Mkopaji';
   }, []);
 
   useEffect(() => {

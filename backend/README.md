@@ -1,4 +1,4 @@
-# Backend API - Loan App Clone
+# Backend API - Tala Mkopaji
 
 Express.js REST API for loan application management with M-Pesa integration.
 

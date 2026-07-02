@@ -36,7 +36,7 @@ const Eligibility = () => {
   });
 
   useEffect(() => {
-    document.title = 'Loan Eligibility | Loan App Clone';
+    document.title = 'Loan Eligibility | Tala Mkopaji';
   }, []);
 
   const validateName = (v) => {

@@ -31,7 +31,7 @@ const Dashboard = () => {
   }, [fetchLoans]);
 
   useEffect(() => {
-    document.title = 'Dashboard | Loan App Clone';
+    document.title = 'Dashboard | Tala Mkopaji';
   }, []);
 
   const handleLogout = () => {
@@ -52,7 +52,7 @@ const Dashboard = () => {
           <div className="welcome-header">
             <div>
               <h2>Welcome, {user?.name || 'Customer'}!</h2>
-              <p className="welcome-subtitle">Your Loan App Dashboard</p>
+              <p className="welcome-subtitle">Your Tala Mkopaji Dashboard</p>
             </div>
             <button type="button" className="btn-logout" onClick={handleLogout}>
               Logout

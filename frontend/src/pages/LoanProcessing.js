@@ -52,7 +52,7 @@ const LoanProcessing = () => {
   const reminderIntervalRef = useRef(null);
 
   useEffect(() => {
-    document.title = 'Loan Processing | Loan App Clone';
+    document.title = 'Loan Processing | Tala Mkopaji';
   }, []);
 
   useEffect(() => {

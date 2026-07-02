@@ -11,7 +11,7 @@ const Home = () => {
   const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
-    document.title = 'Loan App Clone';
+    document.title = 'Tala Mkopaji';
   }, []);
 
   const handleApplyNow = async () => {

@@ -11,7 +11,7 @@ const Footer = () => {
           <a href="/terms">Terms</a>
           <a href="/contact">Contact</a>
         </div>
-        <p>© 2026 Loan App Clone. Licensed by CBK.</p>
+        <p>© 2026 Tala Mkopaji. Licensed by CBK.</p>
       </div>
     </footer>
   );
