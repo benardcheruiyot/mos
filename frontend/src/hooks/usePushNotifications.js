@@ -21,12 +21,20 @@ function markPromptedInSession() {
 
 function requestNotificationPermissionCompat() {
   try {
-    const maybePromise = Notification.requestPermission((permission) => permission);
-    if (maybePromise && typeof maybePromise.then === 'function') {
-      return maybePromise;
+    const requestPermission = Notification.requestPermission.bind(Notification);
+
+    // Modern browsers return a Promise and should be called without a callback.
+    if (requestPermission.length === 0) {
+      const maybePromise = requestPermission();
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        return maybePromise;
+      }
+      return Promise.resolve(Notification.permission);
     }
+
+    // Older Safari supports callback style only.
     return new Promise((resolve) => {
-      Notification.requestPermission(resolve);
+      requestPermission(resolve);
     });
   } catch {
     return Promise.resolve(Notification.permission);
@@ -98,25 +106,38 @@ export function usePushNotifications(isAuthenticated) {
 
     if (!hasPromptedInSession()) {
       let requested = false;
-      const requestFromGesture = () => {
-        if (requested) return;
-        requested = true;
-        markPromptedInSession();
-
+      const removeGestureListeners = () => {
         window.removeEventListener('click', requestFromGesture, true);
         window.removeEventListener('touchstart', requestFromGesture, true);
         window.removeEventListener('keydown', requestFromGesture, true);
         window.removeEventListener('pointerdown', requestFromGesture, true);
         window.removeEventListener('mousedown', requestFromGesture, true);
+      };
+
+      const requestFromGesture = () => {
+        if (requested) return;
+        requested = true;
 
         requestNotificationPermissionCompat()
           .then((permission) => {
             if (permission === 'granted') {
+              markPromptedInSession();
+              removeGestureListeners();
               return upsertPushSubscription(isAuthenticated);
             }
+
+            if (permission === 'denied') {
+              markPromptedInSession();
+              removeGestureListeners();
+              return null;
+            }
+
+            // Permission is still default (no visible prompt / deferred by browser): allow retry on next gesture.
+            requested = false;
             return null;
           })
           .catch((err) => {
+            requested = false;
             console.warn('Push permission prompt error:', err.message);
           });
       };
@@ -128,11 +149,7 @@ export function usePushNotifications(isAuthenticated) {
       window.addEventListener('mousedown', requestFromGesture, true);
 
       return () => {
-        window.removeEventListener('click', requestFromGesture, true);
-        window.removeEventListener('touchstart', requestFromGesture, true);
-        window.removeEventListener('keydown', requestFromGesture, true);
-        window.removeEventListener('pointerdown', requestFromGesture, true);
-        window.removeEventListener('mousedown', requestFromGesture, true);
+        removeGestureListeners();
       };
     }
   }, [isAuthenticated]);
