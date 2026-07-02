@@ -8,6 +8,15 @@ const appName = process.env.APP_NAME || 'Loan App';
 const appUrl = process.env.APP_PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 const subscriptionsFilePath = path.resolve(__dirname, '../../data/push-subscriptions.json');
 let pushEnabled = false;
+const schedulerStats = {
+  lastRunAt: null,
+  lastSuccessAt: null,
+  lastReason: 'not_started',
+  lastSentCount: 0,
+  lastStaleRemoved: 0,
+  totalSent: 0,
+  totalFailures: 0,
+};
 
 function ensureSubscriptionsStorePath() {
   const dir = path.dirname(subscriptionsFilePath);
@@ -80,11 +89,21 @@ function isEnabled() {
 function saveSubscription(userId, subscription) {
   subscriptions.set(String(userId), subscription);
   persistSubscriptions();
+  console.log(`[Push] Saved subscription. Total active subscriptions: ${subscriptions.size}`);
 }
 
 function removeSubscription(userId) {
   subscriptions.delete(String(userId));
   persistSubscriptions();
+  console.log(`[Push] Removed subscription. Total active subscriptions: ${subscriptions.size}`);
+}
+
+function getSubscriptionCount() {
+  return subscriptions.size;
+}
+
+function getSchedulerStats() {
+  return { ...schedulerStats };
 }
 
 async function sendNotification(subscription, payload) {
@@ -154,16 +173,23 @@ function getNextHourlyMessage() {
 }
 
 async function broadcastHourlyReminder() {
+  schedulerStats.lastRunAt = new Date().toISOString();
+  schedulerStats.lastSentCount = 0;
+  schedulerStats.lastStaleRemoved = 0;
+
   if (!pushEnabled) {
+    schedulerStats.lastReason = 'push_disabled';
     console.warn('[Push Scheduler] Skipped hourly reminder: push is disabled.');
     return;
   }
 
   if (subscriptions.size === 0) {
+    schedulerStats.lastReason = 'no_subscriptions';
     console.warn('[Push Scheduler] Skipped hourly reminder: no active subscriptions.');
     return;
   }
 
+  schedulerStats.lastReason = 'sending';
   console.log(`[Push Scheduler] Sending hourly reminder to ${subscriptions.size} subscription(s).`);
 
   const { title, body } = getNextHourlyMessage();
@@ -176,17 +202,44 @@ async function broadcastHourlyReminder() {
   };
 
   const stale = [];
+  let sentCount = 0;
   for (const [userId, sub] of subscriptions.entries()) {
     const result = await sendNotification(sub, payload);
-    if (result === 'gone') stale.push(userId);
+    if (result === true) {
+      sentCount += 1;
+      continue;
+    }
+
+    if (result === 'gone') {
+      stale.push(userId);
+      continue;
+    }
+
+    schedulerStats.totalFailures += 1;
   }
+
+  schedulerStats.lastSentCount = sentCount;
+  schedulerStats.totalSent += sentCount;
+
   if (stale.length > 0) {
     stale.forEach((id) => subscriptions.delete(id));
     persistSubscriptions();
+    schedulerStats.lastStaleRemoved = stale.length;
     console.warn(`[Push Scheduler] Removed ${stale.length} stale subscription(s).`);
   }
 
+  schedulerStats.lastSuccessAt = new Date().toISOString();
+  schedulerStats.lastReason = 'completed';
   console.log('[Push Scheduler] Hourly reminder cycle completed.');
 }
 
-module.exports = { configure, isEnabled, saveSubscription, removeSubscription, sendToUser, broadcastHourlyReminder };
+module.exports = {
+  configure,
+  isEnabled,
+  saveSubscription,
+  removeSubscription,
+  sendToUser,
+  broadcastHourlyReminder,
+  getSubscriptionCount,
+  getSchedulerStats,
+};

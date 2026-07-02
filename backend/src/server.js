@@ -11,6 +11,14 @@ const pushService = require('./services/pushService');
 const app = express();
 const PORT = process.env.PORT || 5001;
 const isProduction = process.env.NODE_ENV === 'production';
+const reminderIntervalMs = Math.max(
+  parseInt(process.env.PUSH_REMINDER_INTERVAL_MS || '3600000', 10) || 3600000,
+  60000
+);
+const reminderStartupDelayMs = Math.max(
+  parseInt(process.env.PUSH_REMINDER_STARTUP_DELAY_MS || '120000', 10) || 120000,
+  1000
+);
 
 app.set('trust proxy', 1);
 
@@ -45,11 +53,16 @@ app.use(express.urlencoded({ limit: '10kb', extended: true }));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const pushStats = pushService.getSchedulerStats ? pushService.getSchedulerStats() : {};
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     services: {
-      push: pushService.isEnabled(),
+      push: {
+        enabled: pushService.isEnabled(),
+        subscriptions: pushService.getSubscriptionCount ? pushService.getSubscriptionCount() : 0,
+        scheduler: pushStats,
+      },
     },
   });
 });
@@ -73,20 +86,23 @@ const server = app.listen(PORT, () => {
   const pushConfigured = pushService.configure();
   if (pushConfigured) {
     console.log('🔔 Web Push configured');
+    console.log(`🔔 Push reminders every ${reminderIntervalMs}ms (startup delay ${reminderStartupDelayMs}ms)`);
+
+    const runReminderCycle = () => {
+      pushService.broadcastHourlyReminder().catch((error) => {
+        console.warn('[Push Scheduler] Reminder cycle failed:', error.message);
+      });
+    };
 
     // Send an early reminder after startup, then continue hourly.
     setTimeout(() => {
-      pushService.broadcastHourlyReminder().catch((error) => {
-        console.warn('[Push Scheduler] Immediate reminder failed:', error.message);
-      });
-    }, 2 * 60 * 1000);
+      runReminderCycle();
+    }, reminderStartupDelayMs);
 
     // Hourly push notification scheduler
     setInterval(() => {
-      pushService.broadcastHourlyReminder().catch((error) => {
-        console.warn('[Push Scheduler] Hourly reminder failed:', error.message);
-      });
-    }, 60 * 60 * 1000); // every 60 minutes
+      runReminderCycle();
+    }, reminderIntervalMs);
   } else {
     console.warn('🔕 Web Push disabled');
   }
