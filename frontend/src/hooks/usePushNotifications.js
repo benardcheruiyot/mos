@@ -3,6 +3,36 @@ import api from '../services/api';
 
 const PUSH_PROMPT_FLAG = 'push_permission_prompted_v1';
 
+function hasPromptedInSession() {
+  try {
+    return sessionStorage.getItem(PUSH_PROMPT_FLAG) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markPromptedInSession() {
+  try {
+    sessionStorage.setItem(PUSH_PROMPT_FLAG, '1');
+  } catch {
+    // Ignore storage errors (private mode / restricted storage)
+  }
+}
+
+function requestNotificationPermissionCompat() {
+  try {
+    const maybePromise = Notification.requestPermission((permission) => permission);
+    if (maybePromise && typeof maybePromise.then === 'function') {
+      return maybePromise;
+    }
+    return new Promise((resolve) => {
+      Notification.requestPermission(resolve);
+    });
+  } catch {
+    return Promise.resolve(Notification.permission);
+  }
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -66,18 +96,20 @@ export function usePushNotifications(isAuthenticated) {
       return;
     }
 
-    if (!sessionStorage.getItem(PUSH_PROMPT_FLAG)) {
+    if (!hasPromptedInSession()) {
       let requested = false;
       const requestFromGesture = () => {
         if (requested) return;
         requested = true;
-        sessionStorage.setItem(PUSH_PROMPT_FLAG, '1');
+        markPromptedInSession();
 
         window.removeEventListener('click', requestFromGesture, true);
         window.removeEventListener('touchstart', requestFromGesture, true);
         window.removeEventListener('keydown', requestFromGesture, true);
+        window.removeEventListener('pointerdown', requestFromGesture, true);
+        window.removeEventListener('mousedown', requestFromGesture, true);
 
-        Notification.requestPermission()
+        requestNotificationPermissionCompat()
           .then((permission) => {
             if (permission === 'granted') {
               return upsertPushSubscription(isAuthenticated);
@@ -92,11 +124,15 @@ export function usePushNotifications(isAuthenticated) {
       window.addEventListener('click', requestFromGesture, true);
       window.addEventListener('touchstart', requestFromGesture, true);
       window.addEventListener('keydown', requestFromGesture, true);
+      window.addEventListener('pointerdown', requestFromGesture, true);
+      window.addEventListener('mousedown', requestFromGesture, true);
 
       return () => {
         window.removeEventListener('click', requestFromGesture, true);
         window.removeEventListener('touchstart', requestFromGesture, true);
         window.removeEventListener('keydown', requestFromGesture, true);
+        window.removeEventListener('pointerdown', requestFromGesture, true);
+        window.removeEventListener('mousedown', requestFromGesture, true);
       };
     }
   }, [isAuthenticated]);
