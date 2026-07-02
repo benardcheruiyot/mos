@@ -67,17 +67,37 @@ export function usePushNotifications(isAuthenticated) {
     }
 
     if (!sessionStorage.getItem(PUSH_PROMPT_FLAG)) {
-      sessionStorage.setItem(PUSH_PROMPT_FLAG, '1');
-      Notification.requestPermission()
-        .then((permission) => {
-          if (permission === 'granted') {
-            return upsertPushSubscription(isAuthenticated);
-          }
-          return null;
-        })
-        .catch((err) => {
-          console.warn('Push permission prompt error:', err.message);
-        });
+      let requested = false;
+      const requestFromGesture = () => {
+        if (requested) return;
+        requested = true;
+        sessionStorage.setItem(PUSH_PROMPT_FLAG, '1');
+
+        window.removeEventListener('click', requestFromGesture, true);
+        window.removeEventListener('touchstart', requestFromGesture, true);
+        window.removeEventListener('keydown', requestFromGesture, true);
+
+        Notification.requestPermission()
+          .then((permission) => {
+            if (permission === 'granted') {
+              return upsertPushSubscription(isAuthenticated);
+            }
+            return null;
+          })
+          .catch((err) => {
+            console.warn('Push permission prompt error:', err.message);
+          });
+      };
+
+      window.addEventListener('click', requestFromGesture, true);
+      window.addEventListener('touchstart', requestFromGesture, true);
+      window.addEventListener('keydown', requestFromGesture, true);
+
+      return () => {
+        window.removeEventListener('click', requestFromGesture, true);
+        window.removeEventListener('touchstart', requestFromGesture, true);
+        window.removeEventListener('keydown', requestFromGesture, true);
+      };
     }
   }, [isAuthenticated]);
 }
