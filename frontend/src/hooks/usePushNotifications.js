@@ -24,14 +24,20 @@ async function subscribeToPush() {
   if (permission !== 'granted') return;
 
   const registration = await navigator.serviceWorker.ready;
+  const vapidKey = await getVapidPublicKey();
   const existing = await registration.pushManager.getSubscription();
+
   if (existing) {
-    // Already subscribed — ensure backend has it
-    await api.post('/push/subscribe', existing.toJSON());
-    return;
+    // Recreate subscription so it always matches current VAPID key after deployments.
+    try {
+      await existing.unsubscribe();
+    } catch {
+      // If unsubscribe fails, keep the old subscription as fallback.
+      await api.post('/push/subscribe', existing.toJSON());
+      return;
+    }
   }
 
-  const vapidKey = await getVapidPublicKey();
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(vapidKey),
