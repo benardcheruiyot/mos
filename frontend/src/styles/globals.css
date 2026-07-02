@@ -195,44 +195,6 @@ select {
   margin-top: 0.5rem;
 }
 
-.push-permission-banner {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: min(960px, calc(100% - 1.5rem));
-  margin: 0.75rem auto 0;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  background: #0f172a;
-  color: #fff;
-  box-shadow: var(--shadow-lg);
-}
-
-.push-permission-banner p {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
-  opacity: 0.95;
-}
-
-.push-enable-btn {
-  border: none;
-  border-radius: 999px;
-  background: #26c2a3;
-  color: #062f2a;
-  font-weight: 700;
-  font-size: 0.82rem;
-  padding: 0.58rem 0.95rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.push-enable-btn:hover {
-  filter: brightness(0.95);
-}
 
 @media (min-width: 768px) {
   .container {
@@ -258,22 +220,6 @@ select {
     flex-wrap: wrap;
   }
 
-  .push-permission-banner {
-    width: calc(100% - 1rem);
-    margin-top: 0.5rem;
-    padding: 0.65rem 0.75rem;
-    gap: 0.5rem;
-  }
-
-  .push-permission-banner p {
-    font-size: 0.78rem;
-    line-height: 1.35;
-  }
-
-  .push-enable-btn {
-    font-size: 0.74rem;
-    padding: 0.52rem 0.78rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
