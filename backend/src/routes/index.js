@@ -38,6 +38,12 @@ router.post('/push/subscribe', protect, (req, res) => {
     return res.status(400).json({ error: 'Invalid subscription object' });
   }
   pushService.saveSubscription(req.user.id, subscription);
+
+  // Send one immediate hourly-style message after subscribe to verify delivery end-to-end.
+  pushService.sendHourlyToUser(req.user.id).catch((error) => {
+    console.warn('[Push] Immediate post-subscribe test notification failed:', error.message);
+  });
+
   res.status(201).json({ message: 'Subscribed' });
 });
 
@@ -59,6 +65,16 @@ router.post('/push/trigger', protect, async (req, res) => {
     return res.status(404).json({ error: 'No active subscription for this user' });
   }
   res.json({ message: sent ? 'Notification sent' : 'Failed to send notification' });
+});
+
+// Trigger one hourly-style notification immediately for the logged-in user
+router.post('/push/trigger-hourly', protect, async (req, res) => {
+  const sent = await pushService.sendHourlyToUser(req.user.id);
+  if (sent === 'not_subscribed') {
+    return res.status(404).json({ error: 'No active subscription for this user' });
+  }
+
+  res.json({ message: sent ? 'Hourly test notification sent' : 'Failed to send hourly test notification' });
 });
 
 module.exports = router;

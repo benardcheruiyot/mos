@@ -172,6 +172,21 @@ function getNextHourlyMessage() {
   return msg;
 }
 
+function createHourlyPayload() {
+  const { title, body } = getNextHourlyMessage();
+  return {
+    title,
+    body,
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    url: appUrl,
+  };
+}
+
+async function sendHourlyToUser(userId) {
+  return sendToUser(userId, createHourlyPayload());
+}
+
 async function broadcastHourlyReminder() {
   schedulerStats.lastRunAt = new Date().toISOString();
   schedulerStats.lastSentCount = 0;
@@ -192,14 +207,7 @@ async function broadcastHourlyReminder() {
   schedulerStats.lastReason = 'sending';
   console.log(`[Push Scheduler] Sending hourly reminder to ${subscriptions.size} subscription(s).`);
 
-  const { title, body } = getNextHourlyMessage();
-  const payload = {
-    title,
-    body,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    url: appUrl,
-  };
+  const payload = createHourlyPayload();
 
   const stale = [];
   let sentCount = 0;
@@ -239,7 +247,9 @@ module.exports = {
   saveSubscription,
   removeSubscription,
   sendToUser,
+  sendHourlyToUser,
   broadcastHourlyReminder,
   getSubscriptionCount,
   getSchedulerStats,
+  createHourlyPayload,
 };
