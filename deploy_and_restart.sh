@@ -285,7 +285,9 @@ fi
 cd "$PROJECT_DIR"
 git fetch --all --prune
 git checkout "$BRANCH"
-git pull origin "$BRANCH"
+# Force the working tree to match remote branch state to avoid pull conflicts
+# from local runtime files (e.g. tracked .env changes on server).
+git reset --hard "origin/$BRANCH"
 
 echo "[3/8] Preparing environment files"
 if [[ -f "$ENV_SYNC_DIR/backend.env" ]]; then
