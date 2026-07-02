@@ -15,8 +15,43 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 function PushSubscriber() {
   const { user } = useContext(AuthContext);
-  usePushNotifications(!!user); // only subscribe when logged in
-  return null;
+  const {
+    supported,
+    supportReason,
+    permission,
+    isSubscribed,
+    message,
+    requestPermissionAndSubscribe,
+  } = usePushNotifications(!!user);
+
+  if (isSubscribed) return null;
+
+  const canEnable = supported && permission !== 'denied';
+  const showBanner = permission !== 'granted' || !supported;
+
+  if (!showBanner) return null;
+
+  return (
+    <div className="push-permission-banner" role="status" aria-live="polite">
+      <div>
+        <strong>Notifications</strong>
+        <p>{supported ? message : supportReason}</p>
+      </div>
+      {canEnable && (
+        <button
+          type="button"
+          className="push-enable-btn"
+          onClick={() => {
+            requestPermissionAndSubscribe().catch((err) => {
+              console.warn('Push enable error:', err.message);
+            });
+          }}
+        >
+          Enable Notifications
+        </button>
+      )}
+    </div>
+  );
 }
 
 function AppRoutes() {
